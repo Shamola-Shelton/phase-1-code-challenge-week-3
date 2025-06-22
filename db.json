@@ -1,0 +1,16 @@
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "Getting Started with React",
+      "content": "Learn the basics of React with this beginner-friendly guide.",
+      "author": "Sarah Johnson"
+    },
+    {
+      "id": 2,
+      "title": "The Future of Web Development",
+      "content": "Explore the trends shaping the future of web tech.",
+      "author": "Michael Chen"
+    }
+  ]
+}
