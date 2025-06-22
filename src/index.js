@@ -109,6 +109,7 @@ function addNewPostListener() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newPost)
         })
+
         
         .then(response => response.json())
         .then(post => {
