@@ -8,6 +8,8 @@ function displayPosts() {
                 const postItem = document.createElement('div');
                 postItem.textContent = post.title;
                 postItem.dataset.id = post.id;
+                postItem.dataset.content = post.content; // Store content for editing
+                postItem.dataset.author = post.author;   // Store author for reference
                 postItem.addEventListener('click', () => handlePostClick(post.id));
                 postList.appendChild(postItem);
             });
@@ -30,10 +32,20 @@ function handlePostClick(postId) {
                 <button id="edit-post-btn" class="btn primary">Edit</button>
                 <button id="delete-post-btn" class="btn secondary">Delete</button>
             `;
-            document.getElementById('edit-post-btn').addEventListener('click', () => showEditForm(post));
-            document.getElementById('delete-post-btn').addEventListener('click', () => deletePost(post.id));
+            setupButtons(post);
         })
         .catch(error => console.error('Error fetching post details:', error));
+}
+
+function setupButtons(post) {
+    const editButton = document.getElementById('edit-post-btn');
+    const deleteButton = document.getElementById('delete-post-btn');
+    if (editButton) {
+        editButton.addEventListener('click', () => showEditForm(post));
+    }
+    if (deleteButton) {
+        deleteButton.addEventListener('click', () => deletePost(post.id));
+    }
 }
 
 function showEditForm(post) {
@@ -47,32 +59,27 @@ function showEditForm(post) {
         const updatedTitle = document.getElementById('edit-title').value;
         const updatedContent = document.getElementById('edit-content').value;
 
-        fetch(`http://localhost:3000/posts/${post.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: updatedTitle, content: updatedContent })
-        })
-        .then(response => response.json())
-        .then(updatedPost => {
-            const postDetail = document.getElementById('post-detail');
-            postDetail.innerHTML = `
-                <h2>${updatedPost.title}</h2>
-                <p>${updatedPost.content}</p>
-                <p><strong>Author:</strong> ${updatedPost.author}</p>
-                <button id="edit-post-btn" class="btn primary">Edit</button>
-                <button id="delete-post-btn" class="btn secondary">Delete</button>
-            `;
-            editForm.classList.add('hidden');
-            const postItems = document.querySelectorAll('#post-list div');
-            postItems.forEach(item => {
-                if (item.dataset.id == updatedPost.id) {
-                    item.textContent = updatedPost.title;
-                }
-            });
-            document.getElementById('edit-post-btn').addEventListener('click', () => showEditForm(updatedPost));
-            document.getElementById('delete-post-btn').addEventListener('click', () => deletePost(updatedPost.id));
-        })
-        .catch(error => console.error('Error updating post:', error));
+        // Update the DOM without backend persistence
+        const postDetail = document.getElementById('post-detail');
+        postDetail.innerHTML = `
+            <h2>${updatedTitle}</h2>
+            <p>${updatedContent}</p>
+            <p><strong>Author:</strong> ${post.author}</p>
+            <button id="edit-post-btn" class="btn primary">Edit</button>
+            <button id="delete-post-btn" class="btn secondary">Delete</button>
+        `;
+        editForm.classList.add('hidden');
+
+        // Update the post list item
+        const postItems = document.querySelectorAll('#post-list div');
+        postItems.forEach(item => {
+            if (item.dataset.id == post.id) {
+                item.textContent = updatedTitle;
+                item.dataset.content = updatedContent; // Update stored content
+            }
+        });
+
+        setupButtons({ id: post.id, title: updatedTitle, content: updatedContent, author: post.author });
     };
 
     document.getElementById('cancel-edit').onclick = () => {
@@ -109,14 +116,14 @@ function addNewPostListener() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newPost)
         })
-
-        
         .then(response => response.json())
         .then(post => {
             const postList = document.getElementById('post-list');
             const postItem = document.createElement('div');
             postItem.textContent = post.title;
             postItem.dataset.id = post.id;
+            postItem.dataset.content = post.content;
+            postItem.dataset.author = post.author;
             postItem.addEventListener('click', () => handlePostClick(post.id));
             postList.appendChild(postItem);
             handlePostClick(post.id);
