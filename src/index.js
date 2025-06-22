@@ -8,14 +8,10 @@ function displayPosts() {
                 const postItem = document.createElement('div');
                 postItem.textContent = post.title;
                 postItem.dataset.id = post.id;
-                postItem.dataset.content = post.content; // Store content for editing
-                postItem.dataset.author = post.author;   // Store author for reference
                 postItem.addEventListener('click', () => handlePostClick(post.id));
                 postList.appendChild(postItem);
             });
-            if (posts.length > 0) {
-                handlePostClick(posts[0].id);
-            }
+            if (posts.length > 0) handlePostClick(posts[0].id);
         })
         .catch(error => console.error('Error fetching posts:', error));
 }
@@ -26,65 +22,102 @@ function handlePostClick(postId) {
         .then(post => {
             const postDetail = document.getElementById('post-detail');
             postDetail.innerHTML = `
-                <h2>${post.title}</h2>
-                <p>${post.content}</p>
-                <p><strong>Author:</strong> ${post.author}</p>
-                <button id="edit-post-btn" class="btn primary">Edit</button>
-                <button id="delete-post-btn" class="btn secondary">Delete</button>
+                <div id="post-content">
+                    <h2>${post.title}</h2>
+                    <p>${post.content}</p>
+                    <p><strong>Author:</strong> ${post.author}</p>
+                    <button id="edit-post-btn" class="btn primary">Edit</button>
+                    <button id="delete-post-btn" class="btn secondary">Delete</button>
+                </div>
+                <form id="edit-post-form" class="hidden">
+                    <h4>Update Post Details</h4>
+                    <label for="edit-title">Title:</label>
+                    <input type="text" name="title" id="edit-title" class="input-field" required>
+                    <label for="edit-content">Content:</label>
+                    <textarea name="content" id="edit-content" rows="5" class="input-field" required></textarea>
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">Update Post</button>
+                        <button type="button" id="cancel-edit" class="btn secondary">Cancel</button>
+                    </div>
+                </form>
             `;
-            setupButtons(post);
+            setupEditButton(post);
+            setupDeleteButton(post.id);
         })
         .catch(error => console.error('Error fetching post details:', error));
 }
 
-function setupButtons(post) {
+function setupEditButton(post) {
     const editButton = document.getElementById('edit-post-btn');
-    const deleteButton = document.getElementById('delete-post-btn');
     if (editButton) {
-        editButton.addEventListener('click', () => showEditForm(post));
+        editButton.addEventListener('click', () => {
+            showEditForm(post);
+        });
     }
+}
+
+function setupDeleteButton(postId) {
+    const deleteButton = document.getElementById('delete-post-btn');
     if (deleteButton) {
-        deleteButton.addEventListener('click', () => deletePost(post.id));
+        deleteButton.addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete this post?')) {
+                deletePost(postId);
+            }
+        });
     }
 }
 
 function showEditForm(post) {
     const editForm = document.getElementById('edit-post-form');
-    editForm.classList.remove('hidden');
-    document.getElementById('edit-title').value = post.title;
-    document.getElementById('edit-content').value = post.content;
+    if (editForm) {
+        editForm.classList.remove('hidden');
+        document.getElementById('edit-title').value = post.title;
+        document.getElementById('edit-content').value = post.content;
 
-    editForm.onsubmit = (event) => {
-        event.preventDefault();
-        const updatedTitle = document.getElementById('edit-title').value;
-        const updatedContent = document.getElementById('edit-content').value;
+        editForm.onsubmit = (event) => {
+            event.preventDefault();
+            const updatedTitle = document.getElementById('edit-title').value;
+            const updatedContent = document.getElementById('edit-content').value;
 
-        // Update the DOM without backend persistence
-        const postDetail = document.getElementById('post-detail');
-        postDetail.innerHTML = `
-            <h2>${updatedTitle}</h2>
-            <p>${updatedContent}</p>
-            <p><strong>Author:</strong> ${post.author}</p>
-            <button id="edit-post-btn" class="btn primary">Edit</button>
-            <button id="delete-post-btn" class="btn secondary">Delete</button>
-        `;
-        editForm.classList.add('hidden');
+            fetch(`http://localhost:3000/posts/${post.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: updatedTitle,
+                    content: updatedContent
+                })
+            })
+            .then(response => response.json())
+            .then(updatedPost => {
+                // Update post content
+                const postContent = document.getElementById('post-content');
+                postContent.innerHTML = `
+                    <h2>${updatedPost.title}</h2>
+                    <p>${updatedPost.content}</p>
+                    <p><strong>Author:</strong> ${updatedPost.author}</p>
+                    <button id="edit-post-btn" class="btn primary">Edit</button>
+                    <button id="delete-post-btn" class="btn secondary">Delete</button>
+                `;
+                editForm.classList.add('hidden');
 
-        // Update the post list item
-        const postItems = document.querySelectorAll('#post-list div');
-        postItems.forEach(item => {
-            if (item.dataset.id == post.id) {
-                item.textContent = updatedTitle;
-                item.dataset.content = updatedContent; // Update stored content
-            }
-        });
+                // Update title in post list
+                const postItems = document.querySelectorAll('#post-list div');
+                postItems.forEach(item => {
+                    if (item.dataset.id == updatedPost.id) {
+                        item.textContent = updatedPost.title;
+                    }
+                });
 
-        setupButtons({ id: post.id, title: updatedTitle, content: updatedContent, author: post.author });
-    };
+                setupEditButton(updatedPost);
+                setupDeleteButton(updatedPost.id);
+            })
+            .catch(error => console.error('Error updating post:', error));
+        };
 
-    document.getElementById('cancel-edit').onclick = () => {
-        editForm.classList.add('hidden');
-    };
+        document.getElementById('cancel-edit').onclick = () => {
+            editForm.classList.add('hidden');
+        };
+    }
 }
 
 function deletePost(postId) {
@@ -109,12 +142,10 @@ function addNewPostListener() {
         const content = document.getElementById('content').value;
         const author = document.getElementById('author').value;
 
-        const newPost = { title, content, author };
-
         fetch('http://localhost:3000/posts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newPost)
+            body: JSON.stringify({ title, content, author })
         })
         .then(response => response.json())
         .then(post => {
@@ -122,14 +153,11 @@ function addNewPostListener() {
             const postItem = document.createElement('div');
             postItem.textContent = post.title;
             postItem.dataset.id = post.id;
-            postItem.dataset.content = post.content;
-            postItem.dataset.author = post.author;
             postItem.addEventListener('click', () => handlePostClick(post.id));
             postList.appendChild(postItem);
             handlePostClick(post.id);
         })
         .catch(error => console.error('Error adding new post:', error));
-
         form.reset();
     });
 }
